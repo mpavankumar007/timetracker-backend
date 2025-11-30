@@ -25,4 +25,5 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
         LocalDate getWorkDate();
         Long getTotalMs();
     }
+    List<TimeEntry> findByWorkDateBetween(LocalDate startDate, LocalDate endDate);
 }

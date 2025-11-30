@@ -1,5 +1,6 @@
 package com.example.timetracker.service;
 
+import com.example.timetracker.model.TimeEntry;
 import com.example.timetracker.repo.TimeEntryRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -8,7 +9,9 @@ import org.springframework.stereotype.Service;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class DailyReportService {
@@ -19,6 +22,9 @@ public class DailyReportService {
         this.repository = repository;
     }
 
+    // =================================
+    // 1) DAILY REPORT (already working)
+    // =================================
     public byte[] generateDailyReport(LocalDate date) throws IOException {
         List<TimeEntryRepository.DailyTotalProjection> totals =
                 repository.findDailyTotals(date);
@@ -46,6 +52,56 @@ public class DailyReportService {
             }
 
             for (int i = 0; i < 4; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    // =================================
+    // 2) WEEKLY REPORT (new)
+    // =================================
+    public byte[] generateWeeklyReport(LocalDate startDate, LocalDate endDate) throws IOException {
+        // Get all time entries between the two dates (inclusive)
+        List<TimeEntry> entries =
+                repository.findByWorkDateBetween(startDate, endDate);
+
+        // Sum duration per employee for the whole week
+        Map<String, Long> totalMsByEmployee = new HashMap<>();
+        for (TimeEntry e : entries) {
+            totalMsByEmployee.merge(e.getEmployeeId(), e.getDurationMs(), Long::sum);
+        }
+
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Weekly Report");
+
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Week Start");
+            header.createCell(1).setCellValue("Week End");
+            header.createCell(2).setCellValue("Employee ID");
+            header.createCell(3).setCellValue("Total Hours");
+            header.createCell(4).setCellValue("Shift Complete (>= 40h)");
+
+            int rowIdx = 1;
+            for (Map.Entry<String, Long> entry : totalMsByEmployee.entrySet()) {
+                String employeeId = entry.getKey();
+                long totalMs = entry.getValue();
+
+                double hours = totalMs / 1000.0 / 3600.0;
+                boolean complete = hours >= 40.0;   // 40h per week target
+
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(startDate.toString());
+                row.createCell(1).setCellValue(endDate.toString());
+                row.createCell(2).setCellValue(employeeId);
+                row.createCell(3).setCellValue(hours);
+                row.createCell(4).setCellValue(complete ? "Yes" : "No");
+            }
+
+            for (int i = 0; i < 5; i++) {
                 sheet.autoSizeColumn(i);
             }
 
