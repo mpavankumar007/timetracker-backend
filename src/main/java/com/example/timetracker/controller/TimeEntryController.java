@@ -24,7 +24,7 @@ public class TimeEntryController {
     public java.util.List<TimeEntry> getAll() {
         return repository.findAll();
     }
-    
+
     @PostMapping
     public TimeEntry create(@RequestBody TimeEntryRequest req) {
         TimeEntry entry = new TimeEntry();
