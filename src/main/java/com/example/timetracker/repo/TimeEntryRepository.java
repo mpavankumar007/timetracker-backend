@@ -20,10 +20,22 @@ public interface TimeEntryRepository extends JpaRepository<TimeEntry, Long> {
     """)
     List<DailyTotalProjection> findDailyTotals(@Param("date") LocalDate date);
 
+    @Query("""
+        SELECT t.employeeId AS employeeId,
+               t.workDate   AS workDate,
+               SUM(t.durationMs) AS totalMs
+        FROM TimeEntry t
+        WHERE t.workDate BETWEEN :startDate AND :endDate
+        GROUP BY t.employeeId, t.workDate
+        ORDER BY t.employeeId, t.workDate
+    """)
+    List<DailyTotalProjection> findTotalsBetween(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate")   LocalDate endDate);
+
     interface DailyTotalProjection {
         String getEmployeeId();
         LocalDate getWorkDate();
         Long getTotalMs();
     }
-    List<TimeEntry> findByWorkDateBetween(LocalDate startDate, LocalDate endDate);
 }

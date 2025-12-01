@@ -1,6 +1,5 @@
 package com.example.timetracker.service;
 
-import com.example.timetracker.model.TimeEntry;
 import com.example.timetracker.repo.TimeEntryRepository;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -22,9 +21,7 @@ public class DailyReportService {
         this.repository = repository;
     }
 
-    // =================================
-    // 1) DAILY REPORT (already working)
-    // =================================
+    // ---------- DAILY ----------
     public byte[] generateDailyReport(LocalDate date) throws IOException {
         List<TimeEntryRepository.DailyTotalProjection> totals =
                 repository.findDailyTotals(date);
@@ -61,18 +58,22 @@ public class DailyReportService {
         }
     }
 
-    // =================================
-    // 2) WEEKLY REPORT (new)
-    // =================================
-    public byte[] generateWeeklyReport(LocalDate startDate, LocalDate endDate) throws IOException {
-        // Get all time entries between the two dates (inclusive)
-        List<TimeEntry> entries =
-                repository.findByWorkDateBetween(startDate, endDate);
+    // ---------- WEEKLY ----------
+    // date here is the "week end" date (e.g., Sunday)
+    public byte[] generateWeeklyReport(LocalDate endDate) throws IOException {
+        LocalDate startDate = endDate.minusDays(6); // 7-day window
 
-        // Sum duration per employee for the whole week
-        Map<String, Long> totalMsByEmployee = new HashMap<>();
-        for (TimeEntry e : entries) {
-            totalMsByEmployee.merge(e.getEmployeeId(), e.getDurationMs(), Long::sum);
+        List<TimeEntryRepository.DailyTotalProjection> rows =
+                repository.findTotalsBetween(startDate, endDate);
+
+        // Sum totalMs per employee across the week
+        Map<String, Long> totalsByEmployee = new HashMap<>();
+        for (TimeEntryRepository.DailyTotalProjection r : rows) {
+            totalsByEmployee.merge(
+                    r.getEmployeeId(),
+                    r.getTotalMs(),
+                    Long::sum
+            );
         }
 
         try (Workbook workbook = new XSSFWorkbook()) {
@@ -86,12 +87,12 @@ public class DailyReportService {
             header.createCell(4).setCellValue("Shift Complete (>= 40h)");
 
             int rowIdx = 1;
-            for (Map.Entry<String, Long> entry : totalMsByEmployee.entrySet()) {
-                String employeeId = entry.getKey();
-                long totalMs = entry.getValue();
+            for (Map.Entry<String, Long> e : totalsByEmployee.entrySet()) {
+                String employeeId = e.getKey();
+                long totalMs = e.getValue();
 
                 double hours = totalMs / 1000.0 / 3600.0;
-                boolean complete = hours >= 40.0;   // 40h per week target
+                boolean complete = hours >= 40.0;
 
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(startDate.toString());
