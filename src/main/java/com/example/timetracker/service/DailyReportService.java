@@ -42,9 +42,14 @@ public class DailyReportService {
                 double hours = t.getTotalMs() / 1000.0 / 3600.0;
                 boolean complete = hours >= 8.0;
 
+                // Convert decimal hours → Hh Mm
+                long totalMinutes = Math.round(hours * 60);
+                long h = totalMinutes / 60;
+                long m = totalMinutes % 60;
+
                 row.createCell(0).setCellValue(t.getWorkDate().toString());
                 row.createCell(1).setCellValue(t.getEmployeeId());
-                row.createCell(2).setCellValue(hours);
+                row.createCell(2).setCellValue(h + "h " + m + "m");
                 row.createCell(3).setCellValue(complete ? "Yes" : "No");
             }
 
@@ -94,11 +99,16 @@ public class DailyReportService {
                 double hours = totalMs / 1000.0 / 3600.0;
                 boolean complete = hours >= 40.0;
 
+                // Convert decimal hours → Hh Mm
+                long totalMinutes = Math.round(hours * 60);
+                long h = totalMinutes / 60;
+                long m = totalMinutes % 60;
+
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(startDate.toString());
                 row.createCell(1).setCellValue(endDate.toString());
                 row.createCell(2).setCellValue(employeeId);
-                row.createCell(3).setCellValue(hours);
+                row.createCell(3).setCellValue(h + "h " + m + "m");
                 row.createCell(4).setCellValue(complete ? "Yes" : "No");
             }
 
